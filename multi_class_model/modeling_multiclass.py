@@ -1,3 +1,4 @@
+import os
 import torch
 from torch import nn
 from typing import Optional, List, Tuple, Union
@@ -17,22 +18,20 @@ class MultiClassModel(KimiAudioModel):
         super().__init__(config)
         
         self.num_labels = config.num_labels
-        
-        # Classification head
-        # We can reuse lm_head if dimensions match, but usually they don't (vocab_size vs num_labels)
-        # So we create a new head.
+        self.config.num_labels = config.num_labels
         self.score = nn.Linear(config.hidden_size, self.num_labels, bias=False)
 
         # Initialize weights of the new head
         self.score.weight.data.normal_(mean=0.0, std=config.initializer_range)
+        # self.score.bias.data.zero_()
 
         # Remove unused heads to avoid DDP errors
-        if hasattr(self, 'lm_head'):
-            del self.lm_head
-        if hasattr(self, 'mimo_output'):
-            del self.mimo_output
-        if hasattr(self, 'audio_detect_head'):
-            del self.audio_detect_head
+        # if hasattr(self, 'lm_head'):
+        #     del self.lm_head
+        # if hasattr(self, 'mimo_output'):
+        #     del self.mimo_output
+        # if hasattr(self, 'audio_detect_head'):
+        #     del self.audio_detect_head
 
     def forward(
         self,
@@ -53,15 +52,6 @@ class MultiClassModel(KimiAudioModel):
     ) -> Union[Tuple, SequenceClassifierOutputWithPast]:
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        # Process whisper features using the parent class logic or manually
-        # KimiAudioModel.forward handles whisper feature processing and then calls super().forward
-        # But KimiAudioModel.forward calls super().forward which is MoonshotKimiaForCausalLM.forward
-        # MoonshotKimiaForCausalLM.forward computes LM loss.
-        # We want to bypass LM head.
-        
-        # So we should call self.model() directly, but we need to handle whisper features first.
-        # Copying logic from KimiAudioModel.forward for whisper features:
-        
         if whisper_input_feature is not None and whisper_input_feature.numel() > 0:
             whisper_input_feats = whisper_input_feature.to(input_ids.device if input_ids is not None else inputs_embeds.device)
             whisper_feats = self.whisper_model(whisper_input_feats)
@@ -88,7 +78,6 @@ class MultiClassModel(KimiAudioModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-
         hidden_states = transformer_outputs[0]
         if isinstance(hidden_states, tuple):
             hidden_states = hidden_states[0]
@@ -119,7 +108,6 @@ class MultiClassModel(KimiAudioModel):
                     self.config.problem_type = "regression"
                 else:
                     self.config.problem_type = "single_label_classification"
-
             if self.config.problem_type == "regression":
                 loss_fct = nn.MSELoss()
                 if self.num_labels == 1:
@@ -127,12 +115,14 @@ class MultiClassModel(KimiAudioModel):
                 else:
                     loss = loss_fct(logits, labels)
             elif self.config.problem_type == "single_label_classification":
-                loss_fct = nn.CrossEntropyLoss()
+                loss_fct = nn.CrossEntropyLoss(reduction='mean')
+                # per_sample_loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1).long())
+                # abnormal_indices = (per_sample_loss > 10.0).nonzero(as_tuple=True)[0]
                 loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1).long())
+                # loss = per_sample_loss.mean()
             elif self.config.problem_type == "multi_label_classification":
                 loss_fct = nn.BCEWithLogitsLoss()
                 loss = loss_fct(logits, labels)
-
         if not return_dict:
             output = (logits,) + transformer_outputs[1:]
             return ((loss,) + output) if loss is not None else output

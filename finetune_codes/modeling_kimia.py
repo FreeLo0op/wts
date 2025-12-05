@@ -857,13 +857,11 @@ class MoonshotKimiaModel(Qwen2PreTrainedModel):
                 if idx == self.kimia_mimo_transformer_from_layer_index:
                     mimo_hidden_states = hidden_states.clone()
                     audio_detect_hidden_states = hidden_states.clone()
-        
         # Ensure mimo_hidden_states and audio_detect_hidden_states are defined
         if 'mimo_hidden_states' not in locals():
             mimo_hidden_states = hidden_states.clone()
         if 'audio_detect_hidden_states' not in locals():
             audio_detect_hidden_states = hidden_states.clone()
-
         hidden_states = self.norm(hidden_states)
         if output_hidden_states:
             all_hidden_states += (hidden_states,)
@@ -921,20 +919,20 @@ class MoonshotKimiaModel(Qwen2PreTrainedModel):
         )
 
 class MoonshotKimiaForCausalLM(Qwen2PreTrainedModel):
-    _tied_weights_keys = ["lm_head.weight", "mimo_output.weight", "audio_detect_head.weight"]
+    # _tied_weights_keys = ["lm_head.weight", "mimo_output.weight", "audio_detect_head.weight"]
     config_class = KimiAudioConfig
 
     def __init__(self, config):
         super().__init__(config)
         self.model = MoonshotKimiaModel(config)
         self.vocab_size = config.vocab_size
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-        self.audio_detect_out = False
-        if config.load_audio_detect_layers:
-            self.audio_detect_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-            self.audio_detect_out = True
-        if config.load_audio_head:
-            self.mimo_output = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        # self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        # self.audio_detect_out = False
+        # if config.load_audio_detect_layers:
+        #     self.audio_detect_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        #     self.audio_detect_out = True
+        # if config.load_audio_head:
+        #     self.mimo_output = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         
         # Initialize weights and apply final processing
         self.post_init()

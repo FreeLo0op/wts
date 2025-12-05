@@ -28,7 +28,7 @@ class MultiClassConfig(Qwen2Config):
         kimia_adaptor_input_dim: int = 5120,
         kimia_media_begin: int = 151661,
         kimia_media_end: int = 151663,
-        num_labels: int = 2,
+        num_labels: int = 11,
         **kwargs,
     ):
         super().__init__(
@@ -63,4 +63,8 @@ class MultiClassConfig(Qwen2Config):
         self.kimia_adaptor_input_dim = kimia_adaptor_input_dim
         self.kimia_media_begin = kimia_media_begin
         self.kimia_media_end = kimia_media_end
+        self.audio_detect_layers_train = False
+        self.load_audio_detect_layers = False
+        self.audio_detect_layers_num = False
+        self.load_audio_head = False
         # self.num_labels = num_labels # Handled by super().__init__

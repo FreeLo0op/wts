@@ -69,8 +69,6 @@ class MultiClassDataset(Dataset):
                 kimia_content.text_extend(text_tokens)
                 kimia_content.audio_extend([self.extra_tokens.kimia_text_blank] * len(text_tokens))
             elif message.get("message_type") == "audio":
-                # Assuming audio_tokens are provided or we need to tokenize?
-                # The original dataset assumes 'audio_tokens' are in the message
                 audio_tokens = message.get("audio_tokens", [])
                 kimia_content.audio_append(self.extra_tokens.media_begin)
                 kimia_content.audio_extend(audio_tokens, is_continuous=True)
@@ -91,13 +89,11 @@ class MultiClassDataset(Dataset):
         audio_input_ids, text_input_ids, is_continuous_mask, _, _ = kimia_content.to_tensor()
         audio_features = kimia_content.continuous_feature
 
-        # Truncate or pad if necessary (handled in collate_fn usually, but here we can truncate)
         if audio_input_ids.shape[1] > self.max_len:
+            print("Truncating input to max_len(512):", audio_input_ids.shape[1])
             audio_input_ids = audio_input_ids[:, :self.max_len]
             text_input_ids = text_input_ids[:, :self.max_len]
             is_continuous_mask = is_continuous_mask[:, :self.max_len]
-            # Audio features might need truncation too if they correspond to tokens, but they are usually separate list
-            # For now, keep audio features as is, assuming model handles them
 
         return {
             "input_ids": audio_input_ids,

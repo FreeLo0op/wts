@@ -2,11 +2,9 @@ import logging
 import os
 import sys
 import json
-import random
 from dataclasses import dataclass, field
 from typing import Optional, Dict
 
-import torch
 import transformers
 from transformers import Trainer, AutoTokenizer, set_seed
 from huggingface_hub import snapshot_download
@@ -23,9 +21,10 @@ logger = logging.getLogger(__name__)
 class ModelArguments:
     model_name_or_path: Optional[str] = field(default="/mnt/pfs_l2/jieti_team/SFT/hupeng/resources/llm-base-models/Kimi-Audio-7B")
     model_path: str = field(
-        default=None, metadata={"help": "Path to the pretrained model."}
+        default='', metadata={"help": "Path to the pretrained model."}
     )
     num_labels: int = field(default=11, metadata={"help": "Number of labels for classification."})
+    num_hidden_layers: int = field(default=6, metadata={"help": "Number of hidden layers in the model."})
 
 @dataclass
 class DataArguments:
@@ -71,6 +70,7 @@ def make_data_module(whisper_model, text_tokenizer, data_args, model_config) -> 
         eval_data = all_data[:int(len(all_data) * data_args.eval_ratio)]
         train_data = all_data[int(len(all_data) * data_args.eval_ratio):]
     else:
+        logger.warning("No evaluation data provided.")
         train_data = all_data
 
     train_dataset = MultiClassDataset(
@@ -108,22 +108,13 @@ def train():
     ) = parser.parse_args_into_dataclasses()
 
     set_seed(training_args.seed)
-
     logger.info(f"Loading model from {model_args.model_path}")
     
     # Load config
     config = MultiClassConfig.from_pretrained(model_args.model_path)
     config.num_labels = model_args.num_labels
-    config.num_hidden_layers = 6 # Removed hardcoded layer count
-    
-    # Initialize model
-    # We load KimiAudioModel first to get weights, then wrap/convert to MultiClassModel
-    # Since MultiClassModel inherits KimiAudioModel, we can try loading directly if keys match
-    # But MultiClassModel has 'score' which is new.
-    # We can load KimiAudioModel and then copy weights or use from_pretrained with strict=False
-    
-    # Better approach: Initialize MultiClassModel and load weights from KimiAudioModel checkpoint
-    # But KimiAudioModel checkpoint has 'lm_head' which we don't need.
+    config.num_hidden_layers = model_args.num_hidden_layers
+    # config.num_hidden_layers = 6 # Removed hardcoded layer count
     
     model = MultiClassModel.from_pretrained(
         model_args.model_path,
@@ -131,30 +122,14 @@ def train():
         ignore_mismatched_sizes=True, # For score layer vs lm_head mismatch
         trust_remote_code=True
     )
-    
-    # Use init_from_pretrained to load weights correctly including whisper
-    # model = MultiClassModel.init_from_pretrained(
-    #     model_args.model_path,
-    #     model_load_kwargs={"config": config, "ignore_mismatched_sizes": True}
-    # )
-    # Re-initialize score head because init_from_pretrained loads weights into KimiAudioModel structure
-    # but MultiClassModel adds 'score'. init_from_pretrained returns an instance of cls (MultiClassModel)
-    # with loaded weights. The 'score' layer will be initialized in __init__ but weights won't be loaded from anywhere
-    # unless they exist in checkpoint (which they don't).
-    # So 'score' is randomly initialized, which is correct.
-    # However, init_from_pretrained in KimiAudioModel (parent) does:
-    # 1. Load AutoModelForCausalLM (loads LLM weights)
-    # 2. Load WhisperEncoder (loads Whisper weights)
-    # 3. Create cls(config) -> MultiClassModel(config)
-    # 4. Load state_dict into MultiClassModel
-    
-    # This ensures whisper weights are loaded.
-    
-    # If whisper model path is hardcoded in KimiAudioModel, it will be loaded.
-    # If we need to ensure it's loaded correctly:
+
     if not hasattr(model, 'whisper_model') or model.whisper_model is None:
-        # This shouldn't happen if we inherit KimiAudioModel and call super().__init__
-        pass
+        # Initialize whisper model if not present
+        logger.info("Initializing whisper model from original Kimi-Audio-7B-Instruct")
+        model.whisper_model = KimiAudioModel.from_pretrained(
+            '/mnt/pfs_l2/jieti_team/SFT/hupeng/resources/llm-base-models/Kimi-Audio-7B-Instruct/whisper-large-v3',
+            trust_remote_code=True
+        ).whisper_model
 
     # Load tokenizer
     if os.path.exists(model_args.model_name_or_path):
