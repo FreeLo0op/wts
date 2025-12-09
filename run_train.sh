@@ -10,18 +10,19 @@ export OMP_NUM_THREADS=1
 # OUTPUT_DIR=/mnt/pfs_l2/jieti_team/SFT/hupeng/resources/ad_model/ad_model_v1.1
 
 MODEL_PATH=/mnt/pfs_l2/jieti_team/SFT/hupeng/resources/PaMLLM/PaMLLM_kimi_v2.7/pt_model
-TRAIN_DATA=/mnt/pfs_l2/jieti_team/SFT/hupeng/llm_data/kimi_style/sft/train/snt_pa_train2_semantic_codes.json
-EVAL_DATA=/mnt/pfs_l2/jieti_team/SFT/hupeng/llm_data/kimi_style/sft/dev/snt_pa_eval2_semantic_codes.json
-OUTPUT_DIR=/mnt/pfs_l2/jieti_team/SFT/hupeng/resources/ts_model/wt6s_snt_acc_model_v1.1
+TRAIN_DATA=/mnt/pfs_l2/jieti_team/SFT/hupeng/llm_data/kimi_style/sft/train/wts_train_semantic_codes.json
+EVAL_DATA=/mnt/pfs_l2/jieti_team/SFT/hupeng/llm_data/kimi_style/sft/dev/wts_eval_semantic_codes.json
+OUTPUT_DIR=/mnt/pfs_l2/jieti_team/SFT/hupeng/resources/ts_model/wt6s_snt_word_acc_model_v3.1
 
 # 训练参数
 NUM_LABELS=11
-BATCH_SIZE=8
+WORD_NUM_LABELS=4
+BATCH_SIZE=2
 NUM_HIDDEN_LAYERS=6
 
 LEARNING_RATE=1e-5
 EPOCHS=3
-MAX_SEQ_LEN=512
+MAX_SEQ_LEN=1024
 
 # 启动训练
 # 使用 torchrun 进行分布式训练 (单机多卡)
@@ -31,11 +32,12 @@ torchrun --nproc_per_node=8 --master_port=29500 -m multi_class_model.train \
     --eval_data_path "$EVAL_DATA" \
     --output_dir "$OUTPUT_DIR" \
     --num_labels $NUM_LABELS \
+    --word_num_labels $WORD_NUM_LABELS \
     --max_seq_length $MAX_SEQ_LEN \
     --num_hidden_layers $NUM_HIDDEN_LAYERS \
     --per_device_train_batch_size $BATCH_SIZE \
     --per_device_eval_batch_size $BATCH_SIZE \
-    --gradient_accumulation_steps 2 \
+    --gradient_accumulation_steps 1 \
     --learning_rate $LEARNING_RATE \
     --num_train_epochs $EPOCHS \
     --max_grad_norm 0.5 \

@@ -24,6 +24,7 @@ class ModelArguments:
         default='', metadata={"help": "Path to the pretrained model."}
     )
     num_labels: int = field(default=11, metadata={"help": "Number of labels for classification."})
+    word_num_labels: int = field(default=4, metadata={"help": "Number of labels for word classification."})
     num_hidden_layers: int = field(default=6, metadata={"help": "Number of hidden layers in the model."})
 
 @dataclass
@@ -113,6 +114,7 @@ def train():
     # Load config
     config = MultiClassConfig.from_pretrained(model_args.model_path)
     config.num_labels = model_args.num_labels
+    config.word_num_labels = model_args.word_num_labels
     config.num_hidden_layers = model_args.num_hidden_layers
     # config.num_hidden_layers = 6 # Removed hardcoded layer count
     

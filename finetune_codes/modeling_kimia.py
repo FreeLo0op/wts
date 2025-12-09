@@ -773,7 +773,7 @@ class MoonshotKimiaModel(Qwen2PreTrainedModel):
                         if target_len > 0:
                             expanded_whisper[
                                 batch_idx,
-                                start_idx + 1 : start_idx + 1 + target_len,
+                                start_idx + 1 :    start_idx + 1 + target_len,
                                 :,
                             ] = whisper_input_feature_i[:target_len, :]
                     whisper_emb = self.vq_adaptor(

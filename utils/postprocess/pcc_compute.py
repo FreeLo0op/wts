@@ -1,15 +1,18 @@
-
+import ast
 import numpy as np
 from sklearn.metrics import classification_report, confusion_matrix
 
 
-def read_label_file(label_file:str):
+def read_label_file(label_file:str, if_word:bool=False):
     label_dict = {}
     with open(label_file, 'r', encoding='utf-8') as fin:
         lines = fin.readlines()
         for line in lines:
             line = line.strip().split('\t')
             key, score = line[0], line[2]
+            if if_word:
+                score = score.split(' ')
+                score = [float(s) for s in score]
             label_dict[key] = score
     return label_dict
 
@@ -19,10 +22,11 @@ def read_pred_file(pred_file:str):
         lines = fin.readlines()
         for line in lines:
             line = line.strip().split('\t')
-            key, score = line[0], line[1]
+            key, score, word_score = line[0], line[2], line[4]
+            word_score = ast.literal_eval(word_score)
             if '{' in score:
                 continue
-            pred_dict[key] = score
+            pred_dict[key] = (score, word_score)
     return pred_dict
 
 def pcc_compute(true_list:list, pred_list:list, dataset_name:str=None):
@@ -52,6 +56,38 @@ def pcc_compute(true_list:list, pred_list:list, dataset_name:str=None):
 
     return pcc
 
+def snt_main(
+    label_file: str,
+    pred_file: str
+    ):
+    label_dict = read_label_file(label_file)
+    pred_dict = read_pred_file(pred_file)
+    true_list, pred_list = [], []
+    for key in label_dict:
+        if key in pred_dict:
+            pred_snt_score = pred_dict[key][0]
+            true_snt_score = label_dict[key]
+            true_list.append(true_snt_score)
+            pred_list.append(pred_snt_score)
+    pcc = pcc_compute(true_list, pred_list, dataset_name="sentence")
+
+def word_main(
+    label_file: str,
+    pred_file: str
+    ):
+    label_dict = read_label_file(label_file, if_word=True)
+    pred_dict = read_pred_file(pred_file)
+    true_word_list, pred_word_list = [], []
+    for key in label_dict:
+        if key in pred_dict:
+            pred_word_score = pred_dict[key][1]
+            true_word_score = label_dict[key]
+            if len(pred_word_score) != len(true_word_score):
+                print(f"Warning: Key {key} has length mismatch between true and predicted word scores. Skipping.")
+                continue
+            true_word_list.extend(true_word_score)
+            pred_word_list.extend(pred_word_score)
+    pcc_word = pcc_compute(true_word_list, pred_word_list, dataset_name="word")
 
 if __name__ == "__main__":
     # label_file = '/mnt/cfs/workspace/speech/luohaixia/evl_data/en/test_data/10_score/xpad_libu/vegas_label_1216/xpad_libu_final_score'
@@ -70,20 +106,19 @@ if __name__ == "__main__":
     # pred_file = '/mnt/pfs_l2/jieti_team/SFT/hupeng/resources/PaMLLM/PaMLLM_kimi_v2.3/model_infer_2/infer_res/infer_snt_all_10_score_test_modify'
     # pred_file = '/mnt/pfs_l2/jieti_team/SFT/hupeng/mdd_lm/saves/post_training/base_model_v5/multi_pa_v15_1/infers/api_res/snt_all_10_score_test.txt'
 
-    label_files = ['/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/test/label_snt_score_batch1']
-    pred_file = '/mnt/pfs_l2/jieti_team/SFT/hupeng/resources/PaMLLM/PaMLLM_kimi_v2.3/model_infer_2/infer_res/infer_batch1'
+    # label_files = ['/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/test/label_snt_score_batch1']
+    # pred_file = '/mnt/pfs_l2/jieti_team/SFT/hupeng/resources/PaMLLM/PaMLLM_kimi_v2.3/model_infer_2/infer_res/infer_batch1'
 
-    pred_dict = read_pred_file(pred_file)
+    label_files = ['/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/test/label_sent_score']
+    word_label_file = '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/test/label_word_accuracy_modify'
+    pred_file = '/mnt/pfs_l2/jieti_team/SFT/hupeng/resources/ts_model/wt6s_snt_word_acc_model_v3.1/infer_res/tal-k12_acc.res'
+    
+    # word_main(
+    #     label_file=word_label_file,
+    #     pred_file=pred_file
+    # )
 
-    for file in label_files:
-        label_dict = read_label_file(file)
-        dataset_name = file.split('/')[-1]
-        true_list = []
-        pred_list = []
-
-        for key in label_dict:
-            if key in pred_dict:
-                true_list.append(label_dict[key])
-                pred_list.append(pred_dict[key])
-
-        pcc = pcc_compute(true_list, pred_list, dataset_name=dataset_name)
+    snt_main(
+        label_file=label_files[0],
+        pred_file=pred_file
+    )

@@ -29,6 +29,11 @@ class MultiClassConfig(Qwen2Config):
         kimia_media_begin: int = 151661,
         kimia_media_end: int = 151663,
         num_labels: int = 11,
+        word_num_labels: int = 4,
+        shared_num_layers: int = 3,
+        sent_num_layers: int = 2,
+        word_num_layers: int = 2,
+        max_word_len: int = 16,
         **kwargs,
     ):
         super().__init__(
@@ -45,10 +50,15 @@ class MultiClassConfig(Qwen2Config):
             tie_word_embeddings=tie_word_embeddings,
             rope_theta=rope_theta,
             rope_scaling=rope_scaling,
-            num_labels=num_labels,
+            # num_labels=num_labels,
             **kwargs,
         )
-
+        self.word_num_labels = word_num_labels
+        self.num_labels = num_labels
+        self.shared_num_layers = shared_num_layers
+        self.sent_num_layers = sent_num_layers
+        self.word_num_layers = word_num_layers
+        self.max_word_len = max_word_len
         self.kimia_mimo_layers = kimia_mimo_layers
         self.kimia_mimo_audiodelaytokens = kimia_mimo_audiodelaytokens
         self.kimia_mimo_transformer_from_layer_index = (
@@ -67,4 +77,3 @@ class MultiClassConfig(Qwen2Config):
         self.load_audio_detect_layers = False
         self.audio_detect_layers_num = False
         self.load_audio_head = False
-        # self.num_labels = num_labels # Handled by super().__init__

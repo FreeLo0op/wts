@@ -48,6 +48,7 @@ class MultiClassDataset(Dataset):
         
         conversation = sample.get("conversation", [])
         label = sample.get("label", 0) # Integer label
+        word_labels = sample.get("label_words", []) # List of integer labels
 
         # Reuse KimiAContent logic to tokenize conversation
         # We need to import tokenize_conversation logic or reimplement simplified version
@@ -86,11 +87,21 @@ class MultiClassDataset(Dataset):
             kimia_content.text_append(self.extra_tokens.kimia_text_blank)
 
         # Convert to tensor
-        audio_input_ids, text_input_ids, is_continuous_mask, _, _ = kimia_content.to_tensor()
+        # audio_input_ids, text_input_ids, is_continuous_mask, _, _ = kimia_content.to_tensor()
+        # Fix for tuple unpacking error if to_tensor returns 3 values
+        tensor_output = kimia_content.to_tensor()
+        if len(tensor_output) == 5:
+            audio_input_ids, text_input_ids, is_continuous_mask, _, _ = tensor_output
+        elif len(tensor_output) == 3:
+            audio_input_ids, text_input_ids, is_continuous_mask = tensor_output
+        else:
+            # Fallback or raise error
+            audio_input_ids, text_input_ids, is_continuous_mask = tensor_output[:3]
+            
         audio_features = kimia_content.continuous_feature
 
         if audio_input_ids.shape[1] > self.max_len:
-            print("Truncating input to max_len(512):", audio_input_ids.shape[1])
+            # print("Truncating input to max_len(512):", audio_input_ids.shape[1])
             audio_input_ids = audio_input_ids[:, :self.max_len]
             text_input_ids = text_input_ids[:, :self.max_len]
             is_continuous_mask = is_continuous_mask[:, :self.max_len]
@@ -100,7 +111,8 @@ class MultiClassDataset(Dataset):
             "text_input_ids": text_input_ids,
             "whisper_input_feature": audio_features,
             "is_continuous_mask": is_continuous_mask,
-            "labels": torch.tensor(label, dtype=torch.long)
+            "labels": torch.tensor(label, dtype=torch.long),
+            "word_labels": torch.tensor(word_labels, dtype=torch.long)
         }
 
     def __getitem__(self, i):
@@ -116,7 +128,10 @@ class MultiClassDataset(Dataset):
         text_input_ids_batch = []
         is_continuous_mask_batch = []
         labels_batch = []
+        word_labels_batch = []
         whisper_features = []
+        
+        max_word_len = 0
 
         for sample in batch:
             pad_len = max_len - sample['input_ids'].shape[1]
@@ -125,6 +140,10 @@ class MultiClassDataset(Dataset):
             text_input_ids_batch.append(torch.nn.functional.pad(sample['text_input_ids'], (0, pad_len), value=self.pad_token).squeeze(0))
             is_continuous_mask_batch.append(torch.nn.functional.pad(sample['is_continuous_mask'], (0, pad_len), value=False).squeeze(0))
             labels_batch.append(sample['labels'])
+            
+            if 'word_labels' in sample:
+                word_labels_batch.append(sample['word_labels'])
+                max_word_len = max(max_word_len, len(sample['word_labels']))
             
             if sample['whisper_input_feature']:
                 # Assuming one feature per sample or we flatten them
@@ -144,10 +163,23 @@ class MultiClassDataset(Dataset):
         else:
             whisper_input_feature_tensor = torch.empty(0)
 
+        # Pad word labels
+        if word_labels_batch:
+            padded_word_labels = []
+            for wl in word_labels_batch:
+                pad_len = max_word_len - len(wl)
+                # Use -100 for padding (ignored by CrossEntropyLoss)
+                padded_wl = torch.nn.functional.pad(wl, (0, pad_len), value=-100)
+                padded_word_labels.append(padded_wl)
+            word_labels_tensor = torch.stack(padded_word_labels)
+        else:
+            word_labels_tensor = None
+
         return dict(
             input_ids=torch.stack(input_ids_batch),
             text_input_ids=torch.stack(text_input_ids_batch),
             whisper_input_feature=whisper_input_feature_tensor,
             is_continuous_mask=torch.stack(is_continuous_mask_batch),
-            labels=torch.stack(labels_batch)
+            labels=torch.stack(labels_batch),
+            word_labels=word_labels_tensor
         )

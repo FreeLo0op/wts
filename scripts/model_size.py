@@ -17,9 +17,11 @@ def categorize_layer(layer_name):
     categories = {
         'whisper_model': 'whisper_model',
         'model.layers': 'model.layers', 
-        'model.mimo_layers': 'model.mimo_layers',
-        'lm_head': 'lm_head',
-        'mimo_output': 'mimo_output'
+        'sent_encoder': 'sent_encoder',
+        'sent_head': 'sent_head',
+        'whisper_model': 'whisper_model',
+        'word_decoder': 'word_decoder',
+        'word_head': 'word_head',
     }
     
     for category_prefix in categories:
