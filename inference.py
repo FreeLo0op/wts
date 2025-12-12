@@ -99,8 +99,12 @@ def main():
     # prompt = '你是一个英文口语评测助手，根据音频和评测文本，评测句子整体发音流利度，评分标准为0-3分。[TASK:k12口语评测]'
     infer_data = [
         # ('tal-k12_acc', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/test/label_sent_score', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/wavpath', '你是一个英文口语评测助手，根据音频和评测文本，评测句子整体发音准确性，评分标准为0-10分。[TASK:k12口语评测]，评测文本：'),
+        # ('all_10_score_test', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/test/label_snt_all_10_score_test', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/wavs/wavpath_all_10', '你是一个英文口语评测助手，根据音频和评测文本，评测句子整体发音准确性，评分标准为0-10分。[TASK:k12口语评测]，评测文本：'),
+        ('next-250919', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/test/label_snt_score_batch1', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/en/audio_detect/wavs/wavpath_batch1', '你是一个英文口语评测助手，根据音频和评测文本，评测句子整体发音准确性，评分标准为0-10分。[TASK:k12口语评测]，评测文本：'),
+        ('next-251013', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/test/label_snt_score_batch2', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/en/audio_detect/wavs/wavpath_batch2', '你是一个英文口语评测助手，根据音频和评测文本，评测句子整体发音准确性，评分标准为0-10分。[TASK:k12口语评测]，评测文本：'),
+        
         # ('tal-k12_word_acc', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/test/label_word_accuracy_modify', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/wavpath', '你是一个英文口语评测助手，根据音频和评测文本，评测句子整体发音准确性，评分标准为0-10分。[TASK:k12口语评测]，评测文本：'),
-        ('all_10_score_test', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/test/label_snt_all_10_score_test', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/tal-k12/wavs/wavpath_all_10', '你是一个英文口语评测助手，根据音频和评测文本，评测句子整体发音准确性，评分标准为0-10分。[TASK:k12口语评测]，评测文本：'),
+
         # ('speechocean762_acc', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/speechocean762/test/label_sent_score', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/speechocean762/test/wavpath', '评测句子发音准确性，评分标准为0-10分。[TASK:成人口语评测]'),
         # ('speechocean762_fluency', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/speechocean762/test/label_sent_score', '/mnt/pfs_l2/jieti_team/SFT/hupeng/data/speechocean762/test/wavpath', '评测句子发音流利度，评分标准为0-10分。[TASK:成人口语评测]'),
     ]
@@ -141,8 +145,8 @@ def main():
                     sent_probs = []
                     word_preds = []
                     word_probs = []
-
-                fo.write(f'{key}\t{sent_probs}\t{sent_pred}\t{word_probs}\t{word_preds}\n')
+                fo.write(f'{key}\t{sent_probs}\t{sent_pred}\n')
+                # fo.write(f'{key}\t{sent_probs}\t{sent_pred}\t{word_probs}\t{word_preds}\n')
         fo.flush()
         fo.close()
         print(f"Dataset: {dataset_name}, Total Inference Time: {total_time:.4f}s, Total Audio Duration: {total_dur:.4f}s, Real-time Factor: {total_time/total_dur:.4f}")
@@ -228,5 +232,5 @@ def ad_main():
             print(f"{key}\t{probabilities}\t{predicted_label}")
 
 if __name__ == "__main__":
-    # ad_main()
-    main()
+    ad_main()
+    # main()
